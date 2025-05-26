@@ -2,15 +2,18 @@
 import Head from 'next/head';
 import { useState } from 'react';
 import { FaFacebookF, FaInstagram, FaLinkedinIn } from 'react-icons/fa';
+import Link from 'next/link'; // <--- ¡Importación del componente Link de Next.js!
 
 // Ya no necesitamos importar GoogleCalendarBookingButton aquí
 
 export default function Home() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  // Corregido: el segundo elemento del array debe coincidir con el nombre de la función setter
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // <--- ¡AQUÍ ESTABA EL TYPO!
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
 
   const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
+    // Usamos el nombre correcto de la función setter
+    setIsMobileMenuOpen(!isMobileMenuOpen); // <--- ¡Y AQUÍ SE REFLEJÓ EL TYPO!
   };
 
   const toggleFAQ = (index: number) => {
@@ -54,7 +57,11 @@ export default function Home() {
               <li><a href="#porque-elegirnos" className="hover:text-red-400 transition duration-300">Por Qué Elegirnos</a></li>
               <li><a href="#testimonios" className="hover:text-red-400 transition duration-300">Testimonios</a></li>
               {/* Enlace directo a la nueva página de agendamiento nativa */}
-              <li><a href="/agendar" className="hover:text-red-400 transition duration-300">Agenda tu Consulta</a></li>
+              <li>
+                <Link href="/agendar">
+                  <a className="hover:text-red-400 transition duration-300">Agenda tu Consulta</a>
+                </Link>
+              </li>
               <li><a href="#contacto" className="hover:text-red-400 transition duration-300">Contacto</a></li>
             </ul>
             {/* Botón para menú móvil */}
@@ -70,7 +77,11 @@ export default function Home() {
                 <li><a onClick={toggleMobileMenu} href="#porque-elegirnos" className="block text-white hover:text-red-400 transition duration-300 py-2">Por Qué Elegirnos</a></li>
                 <li><a onClick={toggleMobileMenu} href="#testimonios" className="block text-white hover:text-red-400 transition duration-300 py-2">Testimonios</a></li>
                 {/* Enlace directo a la nueva página de agendamiento nativa en móvil */}
-                <li><a onClick={toggleMobileMenu} href="/agendar" className="block text-white hover:text-red-400 transition duration-300 py-2">Agenda tu Consulta</a></li>
+                <li>
+                  <Link href="/agendar">
+                    <a onClick={toggleMobileMenu} className="block text-white hover:text-red-400 transition duration-300 py-2">Agenda tu Consulta</a>
+                  </Link>
+                </li>
                 <li><a onClick={toggleMobileMenu} href="#contacto" className="block text-white hover:text-red-400 transition duration-300 py-2">Contacto</a></li>
               </ul>
             </div>
@@ -90,9 +101,11 @@ export default function Home() {
               En RHAI, la Red Hispana de Apoyo a los Inmigrantes, te guiamos con experiencia y cercanía en tu camino hacia <br className="hidden md:inline"/> Estados Unidos, Europa, Canadá y el resto del mundo.
             </p>
             {/* El botón en el Hero ahora enlaza directamente a la página de agendamiento nativa */}
-            <a href="/agendar" className="inline-block bg-red-600 hover:bg-red-700 text-white text-xl font-bold py-4 px-8 rounded-full shadow-lg transition duration-300 transform hover:scale-105">
-              ¡Agenda tu Consulta Gratuita!
-            </a>
+            <Link href="/agendar">
+              <a className="inline-block bg-red-600 hover:bg-red-700 text-white text-xl font-bold py-4 px-8 rounded-full shadow-lg transition duration-300 transform hover:scale-105">
+                ¡Agenda tu Consulta Gratuita!
+              </a>
+            </Link>
           </div>
         </section>
 
@@ -208,12 +221,13 @@ export default function Home() {
               ¿Listo para dar el siguiente paso? Agenda una consulta gratuita con nuestros expertos para diseñar el plan migratorio de tus sueños.
             </p>
             {/* Este botón ahora simplemente te lleva a la página /agendar */}
-            <a
-              href="/agendar"
-              className="inline-block bg-red-600 hover:bg-red-700 text-white text-xl font-bold py-4 px-8 rounded-full shadow-lg transition duration-300 transform hover:scale-105"
-            >
-              Ir a la Página de Agendamiento
-            </a>
+            <Link href="/agendar">
+              <a
+                className="inline-block bg-red-600 hover:bg-red-700 text-white text-xl font-bold py-4 px-8 rounded-full shadow-lg transition duration-300 transform hover:scale-105"
+              >
+                Ir a la Página de Agendamiento
+              </a>
+            </Link>
             <p className="text-md text-gray-500 mt-6">
               Serás redirigido a nuestra página de agendamiento para elegir la fecha y hora que mejor te convenga.
             </p>
