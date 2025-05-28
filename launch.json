@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Next.js: Depurar lado del servidor",
+        "type": "node",
+        "request": "launch",
+        "cwd": "${workspaceFolder}",
+        "runtimeExecutable": "npm",
+        "runtimeArgs": ["run", "dev"], // Esto ejecutará 'npm run dev' con Turbopack si así lo tienes configurado en package.json
+        "env": {
+          "NODE_OPTIONS": "--inspect" // Habilita el inspector de Node.js
+        },
+        "console": "integratedTerminal",
+        "skipFiles": ["<node_internals>/**"]
+      }
+    ]
+  }

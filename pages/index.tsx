@@ -1,43 +1,126 @@
 // pages/index.tsx
 import Head from 'next/head';
-import { useState } from 'react';
+import { useState, ChangeEvent } from 'react'; // Importa ChangeEvent para el tipo del evento del input
 import { FaFacebookF, FaInstagram, FaLinkedinIn } from 'react-icons/fa';
-import Link from 'next/link'; // <--- ¡Importación del componente Link de Next.js!
+import Link from 'next/link';
+import dynamic from 'next/dynamic';
 
-// Ya no necesitamos importar GoogleCalendarBookingButton aquí
+// Definición de tipos para los detalles de captura de PayPal
+interface PayPalCaptureDetailsForIndex {
+  payer: {
+    name: {
+      given_name?: string;
+      surname?: string;
+    };
+    email_address?: string;
+  };
+  id?: string;
+  status?: string;
+}
 
-export default function Home() {
-  // Corregido: el segundo elemento del array debe coincidir con el nombre de la función setter
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // <--- ¡AQUÍ ESTABA EL TYPO!
+// Tipo para las props que recibe Home, incluyendo paypalSdkLoaded
+interface HomePageProps {
+  paypalSdkLoaded: boolean;
+}
+
+// Tipo para los elementos de FAQ
+interface FAQItem {
+  question: string;
+  answer: string;
+}
+
+const DynamicPayPalButton = dynamic(() => import('../components/PayPalButton'), {
+  ssr: false,
+  loading: () => <p className="text-center text-gray-600">Cargando botón de pago de PayPal...</p>,
+});
+
+// Define faqItems FUERA del componente Home para evitar el error de referencia antes de la definición
+const faqItems: FAQItem[] = [
+  {
+    question: '¿Cuánto tiempo tarda un proceso migratorio?',
+    answer: 'El tiempo varía significativamente según el país, el tipo de visado y las circunstancias individuales. Durante tu consulta gratuita, te daremos una estimación más precisa.',
+  },
+  {
+    question: '¿RHAI garantiza la aprobación del visado?',
+    answer: 'Ninguna asesoría puede garantizar la aprobación de un visado, ya que la decisión final recae en las autoridades migratorias. Sin embargo, en RHAI maximizamos tus posibilidades al asegurar que tu solicitud cumpla con todos los requisitos y se presente de la manera más sólida posible.',
+  },
+  {
+    question: '¿Qué tipo de casos migratorios manejan?',
+    answer: 'En RHAI manejamos una amplia gama de casos, incluyendo visados de trabajo, estudio, reunificación familiar, residencia permanente y ciudadanía. Te invitamos a agendar una consulta para evaluar tu situación específica.',
+  },
+  {
+    question: '¿Ofrecen asesoría en otros idiomas además del español?',
+    answer: 'Nuestra especialidad es el apoyo a la comunidad hispana, por lo que nuestra comunicación principal es en español. Sin embargo, contamos con recursos para asistirte si necesitas soporte en otros idiomas.',
+  },
+];
+
+export default function Home({ paypalSdkLoaded }: HomePageProps) {
+  const [isMobileMenuOpen, setIsMobileMenuMenuOpen] = useState(false);
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
+  const [selectedProductPrice, setSelectedProductPrice] = useState<string | null>(null);
+  const [customAmount, setCustomAmount] = useState<string>('');
+  const [isCustomAmountSelected, setIsCustomAmountSelected] = useState<boolean>(false);
+
 
   const toggleMobileMenu = () => {
-    // Usamos el nombre correcto de la función setter
-    setIsMobileMenuOpen(!isMobileMenuOpen); // <--- ¡Y AQUÍ SE REFLEJÓ EL TYPO!
+    setIsMobileMenuMenuOpen(!isMobileMenuOpen);
   };
 
   const toggleFAQ = (index: number) => {
     setOpenFAQ(openFAQ === index ? null : index);
   };
 
-  const faqItems = [
-    {
-      question: '¿Cuánto tiempo tarda un proceso migratorio?',
-      answer: 'El tiempo varía significativamente según el país, el tipo de visado y las circunstancias individuales. Durante tu consulta gratuita, te daremos una estimación más precisa.',
-    },
-    {
-      question: '¿RHAI garantiza la aprobación del visado?',
-      answer: 'Ninguna asesoría puede garantizar la aprobación de un visado, ya que la decisión final recae en las autoridades migratorias. Sin embargo, en RHAI maximizamos tus posibilidades al asegurar que tu solicitud cumpla con todos los requisitos y se presente de la manera más sólida posible.',
-    },
-    {
-      question: '¿Qué tipo de casos migratorios manejan?',
-      answer: 'En RHAI manejamos una amplia gama de casos, incluyendo visados de trabajo, estudio, reunificación familiar, residencia permanente y ciudadanía. Te invitamos a agendar una consulta para evaluar tu situación específica.',
-    },
-    {
-      question: '¿Ofrecen asesoría en otros idiomas además del español?',
-      answer: 'Nuestra especialidad es el apoyo a la comunidad hispana, por lo que nuestra comunicación principal es en español. Sin embargo, contamos con recursos para asistirte si necesitas soporte en otros idiomas.',
-    },
+  // Define tus opciones de pago aquí
+  const paymentOptions = [
+    { id: 'consulta', name: 'Consulta Migratoria', price: '25.00' },
+    { id: 'asesoria_extra', name: 'Proceso Original (Ejemplo)', price: '100.00+' },
+    // Opción de Donación con un monto fijo (puedes ajustar el precio si lo deseas)
+    { id: 'donacion_fija', name: 'Donación Fija', price: '10.00' },
+    { id: 'monto_abierto', name: 'Donación (Monto Abierto)', price: '' }, // Precio vacío para indicar que es personalizable
   ];
+
+  const handlePaymentSuccess = (details: PayPalCaptureDetailsForIndex) => {
+    console.log('Pago exitoso en Index.tsx:', details);
+    const payerName = details.payer?.name?.given_name || 'Estimado Cliente';
+    alert(`¡Gracias por tu pago, ${payerName}!`);
+    setSelectedProductPrice(null);
+    setCustomAmount('');
+    setIsCustomAmountSelected(false);
+  };
+
+  const handlePaymentError = (error: Error) => {
+    console.error('Error de pago en Index.tsx:', error);
+    alert('Hubo un problema con tu pago. Por favor, inténtalo de nuevo.');
+  };
+
+  const handleCustomAmountChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    const regex = /^\d*\.?\d{0,2}$/;
+    if (regex.test(value) || value === '') {
+      setCustomAmount(value);
+      if (parseFloat(value) > 0) {
+        setSelectedProductPrice(value);
+      } else {
+        setSelectedProductPrice(null);
+      }
+    }
+  };
+
+  // Función para manejar la selección de una opción de pago
+  const handleOptionSelect = (price: string, isCustom: boolean) => {
+    if (isCustom) {
+      setIsCustomAmountSelected(true);
+      setSelectedProductPrice(customAmount && parseFloat(customAmount) > 0 ? customAmount : null);
+    } else {
+      setIsCustomAmountSelected(false);
+      setCustomAmount('');
+      setSelectedProductPrice(price);
+    }
+  };
+
+  const finalPaymentAmount = isCustomAmountSelected ? customAmount : selectedProductPrice;
+  const isPayPalButtonEnabled = finalPaymentAmount && parseFloat(finalPaymentAmount) > 0;
+
 
   return (
     <>
@@ -51,38 +134,34 @@ export default function Home() {
         {/* --- Header (Barra de Navegación) --- */}
         <header className="bg-blue-800 text-white p-4 shadow-md">
           <nav className="container mx-auto flex justify-between items-center">
-            <div className="text-2xl font-bold">RHAI</div>
+            <div className="text-6xl font-bold">RHAI</div>
             <ul className="hidden md:flex space-x-6">
               <li><a href="#servicios" className="hover:text-red-400 transition duration-300">Servicios</a></li>
               <li><a href="#porque-elegirnos" className="hover:text-red-400 transition duration-300">Por Qué Elegirnos</a></li>
               <li><a href="#testimonios" className="hover:text-red-400 transition duration-300">Testimonios</a></li>
-              {/* Enlace directo a la nueva página de agendamiento nativa */}
-              <li>
-                <Link href="/agendar">
-                  <a className="hover:text-red-400 transition duration-300">Agenda tu Consulta</a>
+              <li key="agendar-desktop">
+                <Link href="/agendar" className="hover:text-red-400 transition duration-300">
+                  Agenda tu Consulta
                 </Link>
               </li>
               <li><a href="#contacto" className="hover:text-red-400 transition duration-300">Contacto</a></li>
             </ul>
-            {/* Botón para menú móvil */}
             <button onClick={toggleMobileMenu} className="md:hidden text-white text-3xl focus:outline-none">
               &#9776;
             </button>
           </nav>
-          {/* Menú móvil desplegable */}
           {isMobileMenuOpen && (
             <div className="md:hidden bg-blue-700 mt-4 py-2">
               <ul className="flex flex-col items-center space-y-4">
-                <li><a onClick={toggleMobileMenu} href="#servicios" className="block text-white hover:text-red-400 transition duration-300 py-2">Servicios</a></li>
-                <li><a onClick={toggleMobileMenu} href="#porque-elegirnos" className="block text-white hover:text-red-400 transition duration-300 py-2">Por Qué Elegirnos</a></li>
-                <li><a onClick={toggleMobileMenu} href="#testimonios" className="block text-white hover:text-red-400 transition duration-300 py-2">Testimonios</a></li>
-                {/* Enlace directo a la nueva página de agendamiento nativa en móvil */}
-                <li>
-                  <Link href="/agendar">
-                    <a onClick={toggleMobileMenu} className="block text-white hover:text-red-400 transition duration-300 py-2">Agenda tu Consulta</a>
+                <li key="servicios-mobile"><a onClick={toggleMobileMenu} href="#servicios" className="block text-white hover:text-red-400 transition duration-300 py-2">Servicios</a></li>
+                <li key="porque-elegirnos-mobile"><a onClick={toggleMobileMenu} href="#porque-elegirnos" className="block text-white hover:text-red-400 transition duration-300 py-2">Por Qué Elegirnos</a></li>
+                <li key="testimonios-mobile"><a onClick={toggleMobileMenu} href="#testimonios" className="block text-white hover:text-red-400 transition duration-300 py-2">Testimonios</a></li>
+                <li key="agendar-mobile">
+                  <Link href="/agendar" className="block text-white hover:text-red-400 transition duration-300 py-2" onClick={toggleMobileMenu}>
+                    Agenda tu Consulta
                   </Link>
                 </li>
-                <li><a onClick={toggleMobileMenu} href="#contacto" className="block text-white hover:text-red-400 transition duration-300 py-2">Contacto</a></li>
+                <li key="contacto-mobile"><a onClick={toggleMobileMenu} href="#contacto" className="block text-white hover:text-red-400 transition duration-300 py-2">Contacto</a></li>
               </ul>
             </div>
           )}
@@ -92,7 +171,7 @@ export default function Home() {
         <section className="relative bg-cover bg-center h-[600px] flex items-center justify-center text-white"
           style={{ backgroundImage: "url('/images/hero-background.jpg')" }}>
           <div className="absolute inset-0 bg-black opacity-50"></div>
-          
+
           <div className="container mx-auto text-center z-10 p-4">
             <h1 className="text-5xl md:text-6xl font-extrabold leading-tight mb-4 text-white">
               Tu Nuevo Capítulo Empieza Aquí: <br /> Asesoría Migratoria Confiable.
@@ -100,11 +179,8 @@ export default function Home() {
             <p className="text-xl md:text-2xl mb-8">
               En RHAI, la Red Hispana de Apoyo a los Inmigrantes, te guiamos con experiencia y cercanía en tu camino hacia <br className="hidden md:inline"/> Estados Unidos, Europa, Canadá y el resto del mundo.
             </p>
-            {/* El botón en el Hero ahora enlaza directamente a la página de agendamiento nativa */}
-            <Link href="/agendar">
-              <a className="inline-block bg-red-600 hover:bg-red-700 text-white text-xl font-bold py-4 px-8 rounded-full shadow-lg transition duration-300 transform hover:scale-105">
-                ¡Agenda tu Consulta Gratuita!
-              </a>
+            <Link href="/agendar" className="inline-block bg-red-600 hover:bg-red-700 text-white text-xl font-bold py-4 px-8 rounded-full shadow-lg transition duration-300 transform hover:scale-105">
+              ¡Agenda tu Consulta Gratuita!
             </Link>
           </div>
         </section>
@@ -112,29 +188,35 @@ export default function Home() {
         {/* --- Sección Servicios --- */}
         <section id="servicios" className="py-20 bg-gray-50">
           <div className="container mx-auto text-center px-4">
-            <h2 className="text-4xl font-bold text-blue-800 mb-12">Tu Éxito Migratorio, Nuestra Especialidad.</h2>
+            <h2 className="text-4xl font-bold text-blue-800 mb-2">Tu Éxito Migratorio, Nuestra Especialidad.</h2>
+            <p className="text-xl text-gray-700 mb-12">Solo pagas 50 dólares por procesos.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
               <div className="bg-white p-8 rounded-lg shadow-md hover:shadow-xl transition duration-300">
                 <div className="text-red-600 text-5xl mb-4">💡</div>
                 <h3 className="text-2xl font-semibold text-blue-700 mb-3">Visados de Trabajo y Profesionales</h3>
                 <p className="text-gray-600">Descubre oportunidades laborales y asegura tu futuro profesional con nuestra asesoría experta.</p>
               </div>
-               <div className="bg-white p-8 rounded-lg shadow-md hover:shadow-xl transition duration-300">
+              <div className="bg-white p-8 rounded-lg shadow-md hover:shadow-xl transition duration-300">
                 <div className="text-red-600 text-5xl mb-4">🎓</div>
                 <h3 className="text-2xl font-semibold text-blue-700 mb-3">Visados de Estudio</h3>
                 <p className="text-gray-600">Accede a educación de calidad y experiencias internacionales con nuestra guía detallada.</p>
               </div>
-               <div className="bg-white p-8 rounded-lg shadow-md hover:shadow-xl transition duration-300">
+              <div className="bg-white p-8 rounded-lg shadow-md hover:shadow-xl transition duration-300">
                 <div className="text-red-600 text-5xl mb-4">👨‍👩‍👧‍👦</div>
                 <h3 className="text-2xl font-semibold text-blue-700 mb-3">Reunificación Familiar</h3>
                 <p className="text-gray-600">Une a tus seres queridos y construye un hogar sin fronteras con nuestro acompañamiento legal.</p>
               </div>
-               <div className="bg-white p-8 rounded-lg shadow-md hover:shadow-xl transition duration-300">
+              <div className="bg-white p-8 rounded-lg shadow-md hover:shadow-xl transition duration-300">
+                <div className="text-red-600 text-5xl mb-4">🛡️</div>
+                <h3 className="text-2xl font-semibold text-blue-700 mb-3">Asilo con Pruebas Sólidas</h3>
+                <p className="text-gray-600">Te asesoramos en la preparación y presentación de casos de asilo con el soporte de pruebas contundentes, maximizando tus posibilidades de protección.</p>
+              </div>
+              <div className="bg-white p-8 rounded-lg shadow-md hover:shadow-xl transition duration-300">
                 <div className="text-red-600 text-5xl mb-4">🏠</div>
                 <h3 className="text-2xl font-semibold text-blue-700 mb-3">Residencia y Ciudadanía</h3>
                 <p className="text-gray-600">Tu camino hacia la estabilidad y los derechos plenos, paso a paso, con nuestro equipo.</p>
               </div>
-               <div className="bg-white p-8 rounded-lg shadow-md hover:shadow-xl transition duration-300">
+              <div className="bg-white p-8 rounded-lg shadow-md hover:shadow-xl transition duration-300">
                 <div className="text-red-600 text-5xl mb-4">⚖️</div>
                 <h3 className="text-2xl font-semibold text-blue-700 mb-3">Casos Especiales y Recursos</h3>
                 <p className="text-gray-600">Soluciones a medida para situaciones complejas y orientación continua post-migratoria.</p>
@@ -153,25 +235,30 @@ export default function Home() {
                 <h3 className="text-2xl font-semibold text-blue-700 mb-2">Experiencia Comprobada</h3>
                 <p className="text-gray-600 text-center">Más de [X] años/casos de éxito guiando a familias como la tuya.</p>
               </div>
-               <div className="flex flex-col items-center p-6">
+              <div className="flex flex-col items-center p-6">
                 <div className="text-red-600 text-6xl mb-4">🤝</div>
                 <h3 className="text-2xl font-semibold text-blue-700 mb-2">Atención Personalizada</h3>
                 <p className="text-gray-600 text-center">Cada historia es única. Te ofrecemos un plan a tu medida.</p>
               </div>
-               <div className="flex flex-col items-center p-6">
+              <div className="flex flex-col items-center p-6">
                 <div className="text-red-600 text-6xl mb-4">🗣️</div>
                 <h3 className="text-2xl font-semibold text-blue-700 mb-2">Comunicación Clara y en Tu Idioma</h3>
                 <p className="text-gray-600 text-center">Rompiendo barreras lingüísticas y burocráticas para tu tranquilidad.</p>
               </div>
-               <div className="flex flex-col items-center p-6">
+              <div className="flex flex-col items-center p-6">
                 <div className="text-red-600 text-6xl mb-4">🌐</div>
                 <h3 className="text-2xl font-semibold text-blue-700 mb-2">Red Global de Apoyo</h3>
                 <p className="text-gray-600 text-center">Conexiones y recursos en tus destinos soñados: EE. UU., Europa, Canadá y más.</p>
               </div>
-               <div className="flex flex-col items-center p-6">
+              <div className="flex flex-col items-center p-6">
                 <div className="text-red-600 text-6xl mb-4">💡</div>
                 <h3 className="text-2xl font-semibold text-blue-700 mb-2">Transparencia Total</h3>
                 <p className="text-gray-600 text-center">Procesos claros, sin sorpresas ni costos ocultos.</p>
+              </div>
+              <div className="flex flex-col items-center p-6">
+                <div className="text-red-600 text-6xl mb-4">⚖️</div>
+                <h3 className="text-2xl font-semibold text-blue-700 mb-2">Casos Especiales y Recursos</h3>
+                <p className="text-gray-600 text-center">Soluciones a medida para situaciones complejas y orientación continua post-migratoria.</p>
               </div>
             </div>
           </div>
@@ -193,7 +280,7 @@ export default function Home() {
           <div className="container mx-auto px-4">
             <h2 className="text-4xl font-bold text-blue-800 text-center mb-12">¿Tienes Preguntas? Tenemos las Respuestas.</h2>
             <div className="max-w-3xl mx-auto">
-              {faqItems.map((item, index) => (
+              {faqItems.map((item: FAQItem, index: number) => (
                 <div key={index} className="border-b border-gray-200 py-4">
                   <button
                     className="flex justify-between items-center w-full text-left text-xl font-semibold text-blue-700 focus:outline-none"
@@ -213,24 +300,105 @@ export default function Home() {
           </div>
         </section>
 
-        {/* --- Sección CTA para Agendar Consulta (AHORA ENLAZA A UNA PÁGINA SEPARADA) --- */}
+        {/* --- Sección CTA para Agendar Consulta --- */}
         <section id="agenda-consulta-cta" className="py-20 bg-gray-50">
           <div className="container mx-auto text-center px-4">
             <h2 className="text-4xl font-bold text-blue-800 mb-8">¡Agenda Tu Consulta Gratuita!</h2>
             <p className="text-xl text-gray-700 mb-8 max-w-2xl mx-auto">
               ¿Listo para dar el siguiente paso? Agenda una consulta gratuita con nuestros expertos para diseñar el plan migratorio de tus sueños.
             </p>
-            {/* Este botón ahora simplemente te lleva a la página /agendar */}
-            <Link href="/agendar">
-              <a
-                className="inline-block bg-red-600 hover:bg-red-700 text-white text-xl font-bold py-4 px-8 rounded-full shadow-lg transition duration-300 transform hover:scale-105"
-              >
-                Ir a la Página de Agendamiento
-              </a>
+            <Link href="/agendar" className="inline-block bg-red-600 hover:bg-red-700 text-white text-xl font-bold py-4 px-8 rounded-full shadow-lg transition duration-300 transform hover:scale-105">
+              Ir a la Página de Agendamiento
             </Link>
             <p className="text-md text-gray-500 mt-6">
               Serás redirigido a nuestra página de agendamiento para elegir la fecha y hora que mejor te convenga.
             </p>
+          </div>
+        </section>
+
+        {/* --- Sección de Pago con PayPal - Cliente Elige --- */}
+        <section className="py-20 bg-blue-100">
+          <div className="container mx-auto text-center px-4">
+            <h2 className="text-4xl font-bold text-blue-800 mb-8">Apoya Nuestra Misión o Patrocina un Inmigrante de bajos recursos</h2>
+            <p className="text-xl text-gray-700 mb-8 max-w-2xl mx-auto">
+              Selecciona el tipo de pago que deseas realizar o ingresa un monto personalizado para tu donación:
+            </p>
+            <div className="flex flex-wrap justify-center gap-4 mb-8">
+              {paymentOptions.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => handleOptionSelect(option.price, option.id === 'monto_abierto')}
+                  className={`
+                    relative
+                    w-36 h-36
+                    rounded-lg
+                    flex flex-col items-center justify-center
+                    text-white
+                    font-bold
+                    text-center
+                    shadow-lg
+                    transition duration-300 ease-in-out
+                    overflow-hidden
+                    before:content-['']
+                    before:absolute
+                    before:inset-0
+                    before:p-[3px]
+                    before:bg-gradient-to-br
+                    before:from-red-500
+                    before:via-pink-500
+                    before:to-red-700
+                    before:z-0
+                    ${(selectedProductPrice === option.price && !isCustomAmountSelected) || (option.id === 'monto_abierto' && isCustomAmountSelected)
+                      ? 'transform scale-105' // Ligeramente más grande cuando está seleccionado
+                      : 'hover:scale-105'
+                    }
+                  `}
+                  style={{
+                    // Fondo para el contenido del botón en sí, dentro del borde degradado
+                    backgroundColor: 'rgb(220, 38, 38)', // red-600 de Tailwind
+                  }}
+                >
+                  {/* Div interno para mantener el contenido y aplicar z-index sobre el pseudo-elemento del borde */}
+                  <div className="relative z-10 flex flex-col items-center justify-center">
+                    <span className="text-lg">{option.name}</span>
+                    {option.price && <span className="text-sm">(${option.price})</span>}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {isCustomAmountSelected && (
+              <div className="mt-6 mb-8 max-w-xs mx-auto">
+                <label htmlFor="customAmountInput" className="block text-lg font-medium text-gray-700 mb-2">
+                  Ingresa tu monto de donación en USD:
+                </label>
+                <input
+                  type="text"
+                  id="customAmountInput"
+                  value={customAmount}
+                  onChange={handleCustomAmountChange}
+                  placeholder="Ej: 10.00"
+                  className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-center text-xl font-bold"
+                />
+                {customAmount && parseFloat(customAmount) <= 0 && (
+                  <p className="text-red-500 text-sm mt-2">El monto debe ser mayor a 0.</p>
+                )}
+              </div>
+            )}
+
+            {isPayPalButtonEnabled ? (
+              <div className="max-w-xs mx-auto">
+                <p className="text-lg text-blue-700 mb-4">Estás a punto de pagar: <span className="font-bold">${parseFloat(finalPaymentAmount || '0').toFixed(2)}</span></p>
+                <DynamicPayPalButton
+                  productPrice={finalPaymentAmount!}
+                  onPaymentSuccess={handlePaymentSuccess}
+                  onPaymentError={handlePaymentError}
+                  paypalSdkLoaded={paypalSdkLoaded}
+                />
+              </div>
+            ) : (
+              <p className="text-lg text-gray-600">Por favor, selecciona una opción de pago o ingresa un monto válido.</p>
+            )}
           </div>
         </section>
 
@@ -239,7 +407,7 @@ export default function Home() {
           <div className="container mx-auto text-center px-4">
             <h2 className="text-4xl font-bold mb-8">¿Aún Tienes Dudas? Contáctanos Directamente.</h2>
             <p className="text-xl mb-10">No dejes tu futuro al azar. Permítenos ser tu guía experta en el camino hacia tu nuevo hogar.</p>
-            
+
             <div className="mt-12 text-lg">
               <p>Puedes contactarnos vía email o teléfono:</p>
               <p className="mt-2">📧 <a href="mailto:inmigrationsrhai@gmail.com" className="text-white hover:underline">inmigrationsrhai@gmail.com</a></p>
@@ -253,7 +421,7 @@ export default function Home() {
           <div className="container mx-auto text-center px-4">
             <div className="text-2xl font-bold mb-4">RHAI</div>
             <p className="mb-4">Red Hispana de Apoyo a los Inmigrantes</p>
-            
+
             <div className="flex justify-center space-x-6 mb-6">
               <a href="#" className="text-white hover:text-red-400 transition duration-300 text-2xl"><FaFacebookF /></a>
               <a href="#" className="text-white hover:text-red-400 transition duration-300 text-2xl"><FaInstagram /></a>
