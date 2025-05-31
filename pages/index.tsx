@@ -1,9 +1,16 @@
 // pages/index.tsx
+
 import Head from 'next/head';
-import { useState, ChangeEvent } from 'react'; // Importa ChangeEvent para el tipo del evento del input
+import { useState, ChangeEvent } from 'react'; // Eliminado useEffect
 import { FaFacebookF, FaInstagram, FaLinkedinIn } from 'react-icons/fa';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+
+// --- SE HAN ELIMINADO TODAS LAS IMPORTACIONES DEL CHAT NATIVO ANTERIOR ---
+// import ChatButton from '../components/ChatButton';
+// import ChatWindow from '../components/ChatWindow';
+// import { ClientConversation, ClientMessage } from '../src/types/chat'; // Eliminado
+
 
 // Definición de tipos para los detalles de captura de PayPal
 interface PayPalCaptureDetailsForIndex {
@@ -61,6 +68,37 @@ export default function Home({ paypalSdkLoaded }: HomePageProps) {
   const [customAmount, setCustomAmount] = useState<string>('');
   const [isCustomAmountSelected, setIsCustomAmountSelected] = useState<boolean>(false);
 
+  // --- SE HA ELIMINADO TODO EL ESTADO Y LÓGICA PARA EL CHAT EN VIVO NATIVO ---
+  // const [isChatOpen, setIsChatOpen] = useState(false);
+  // const [userId, setUserId] = useState<string>('');
+  // const [conversationId, setConversationId] = useState<string>('');
+
+  // SE HA ELIMINADO EL useEffect RELACIONADO CON EL CHAT NATIVO
+  // useEffect(() => {
+  //   let currentUserId = localStorage.getItem('rhai_chat_userId');
+  //   if (!currentUserId) {
+  //     currentUserId = `guest_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  //     localStorage.setItem('rhai_chat_userId', currentUserId);
+  //   }
+  //   setUserId(currentUserId);
+
+  //   const fetchOrCreateConversation = async (id: string) => {
+  //     try {
+  //       const res = await fetch(`/api/chat/${id}`);
+  //       if (!res.ok) {
+  //         throw new Error(`Error HTTP! estado: ${res.status}`);
+  //       }
+  //       const data = await res.json();
+  //       setConversationId(data.conversationId);
+  //     } catch (error) {
+  //       console.error('Error al obtener o crear conversación:', error);
+  //     }
+  //   };
+
+  //   if (currentUserId) {
+  //     fetchOrCreateConversation(currentUserId);
+  //   }
+  // }, []);
 
   const toggleMobileMenu = () => {
     setIsMobileMenuMenuOpen(!isMobileMenuOpen);
@@ -73,7 +111,7 @@ export default function Home({ paypalSdkLoaded }: HomePageProps) {
   // Define tus opciones de pago aquí
   const paymentOptions = [
     { id: 'consulta', name: 'Consulta Migratoria', price: '25.00' },
-    { id: 'asesoria_extra', name: 'Proceso Original (Ejemplo)', price: '100.00+' },
+    { id: 'asesoria_extra', name: 'Proceso Original (Ejemplo)', price: '100.00' },
     // Opción de Donación con un monto fijo (puedes ajustar el precio si lo deseas)
     { id: 'donacion_fija', name: 'Donación Fija', price: '10.00' },
     { id: 'monto_abierto', name: 'Donación (Monto Abierto)', price: '' }, // Precio vacío para indicar que es personalizable
@@ -121,6 +159,10 @@ export default function Home({ paypalSdkLoaded }: HomePageProps) {
   const finalPaymentAmount = isCustomAmountSelected ? customAmount : selectedProductPrice;
   const isPayPalButtonEnabled = finalPaymentAmount && parseFloat(finalPaymentAmount) > 0;
 
+  // SE HA ELIMINADO LA FUNCIÓN toggleChat YA NO ES NECESARIA
+  // const toggleChat = () => {
+  //   setIsChatOpen(!isChatOpen);
+  // };
 
   return (
     <>
@@ -177,7 +219,7 @@ export default function Home({ paypalSdkLoaded }: HomePageProps) {
               Tu Nuevo Capítulo Empieza Aquí: <br /> Asesoría Migratoria Confiable.
             </h1>
             <p className="text-xl md:text-2xl mb-8">
-              En RHAI, la Red Hispana de Apoyo a los Inmigrantes, te guiamos con experiencia y cercanía en tu camino hacia <br className="hidden md:inline"/> Estados Unidos, Europa, Canadá y el resto del mundo.
+              En RHAI, la Red Hispana de Apoyo a los Inmigrantes, te guiamos con experiencia y cercanía en tu camino hacia <br className="hidden md:inline" /> Estados Unidos, Europa, Canadá y el resto del mundo.
             </p>
             <Link href="/agendar" className="inline-block bg-red-600 hover:bg-red-700 text-white text-xl font-bold py-4 px-8 rounded-full shadow-lg transition duration-300 transform hover:scale-105">
               ¡Agenda tu Consulta Gratuita!
@@ -437,6 +479,14 @@ export default function Home({ paypalSdkLoaded }: HomePageProps) {
           </div>
         </footer>
       </main>
+
+      {/* --- SE HAN ELIMINADO TODOS LOS COMPONENTES DE CHAT EN VIVO NATIVO --- */}
+      {/* El botón de chat siempre visible */}
+      {/* <ChatButton onClick={toggleChat} /> */}
+      {/* La ventana de chat solo se muestra si isChatOpen es true Y tenemos un conversationId y userId */}
+      {/* {isChatOpen && conversationId && userId && (
+        <ChatWindow onClose={toggleChat} userId={userId} conversationId={conversationId} />
+      )} */}
     </>
   );
 }
