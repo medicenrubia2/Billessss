@@ -1,74 +1,87 @@
 // pages/api/appointments.js
-import { getDb } from '../../lib/db'; // Ajusta la ruta si es necesario
+import { getDb } from '../../lib/db';
 
 export default async function handler(req, res) {
-  const db = await getDb();
+  let db;
+  try {
+    db = await getDb(); // Intenta obtener la conexión a la DB
+  } catch (dbError) {
+    console.error('Error al conectar a la base de datos:', dbError);
+    // Si hay un error de conexión, respondemos con 500
+    return res.status(500).json({ message: 'Error interno del servidor: Fallo en la conexión a la base de datos.' });
+  }
 
   if (req.method === 'POST') {
     const { name, email, phone, appointmentDate, appointmentTime, message } = req.body;
 
+    // Validar que los campos obligatorios estén presentes
     if (!name || !email || !appointmentDate || !appointmentTime) {
-      return res.status(400).json({ message: 'Faltan campos obligatorios.' });
+      return res.status(400).json({ message: 'Faltan campos obligatorios (nombre, email, fecha, hora).' });
     }
 
     try {
-      // 1. Verificar disponibilidad
+      // 1. Verificar disponibilidad de la franja horaria
+      // MySQL usa '?' para los parámetros, y estos se pasan como un array.
       const existingAppointment = await db.get(
-        'SELECT * FROM appointments WHERE appointmentDate = ? AND appointmentTime = ? AND status != ?',
-        appointmentDate,
-        appointmentTime,
-        'cancelled' // No consideramos citas canceladas como conflictos
+        'SELECT id FROM appointments WHERE appointmentDate = ? AND appointmentTime = ? AND status != ?',
+        [appointmentDate, appointmentTime, 'cancelled'] // ¡Parámetros en un array!
       );
 
       if (existingAppointment) {
         return res.status(409).json({ message: 'Esa franja horaria ya está reservada. Por favor, elige otra.' });
       }
 
-      // 2. Insertar la nueva cita
+      // 2. Insertar la nueva cita en la base de datos MySQL
       const result = await db.run(
-        'INSERT INTO appointments (name, email, phone, appointmentDate, appointmentTime, message) VALUES (?, ?, ?, ?, ?, ?)',
-        name,
-        email,
-        phone,
-        appointmentDate,
-        appointmentTime,
-        message
+        'INSERT INTO appointments (name, email, phone, appointmentDate, appointmentTime, message, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          name,
+          email,
+          phone,
+          appointmentDate,
+          appointmentTime,
+          message,
+          'scheduled', // Establece el estado inicial de la cita
+          new Date().toISOString().slice(0, 19).replace('T', ' ') // Formato DATETIME para MySQL 'YYYY-MM-DD HH:MM:SS'
+        ] // ¡Parámetros en un array!
       );
 
-      // Aquí podrías enviar un email de confirmación (usando Nodemailer, SendGrid, Resend, etc.)
-      // console.log(`Email de confirmación enviado a ${email}`);
-
       res.status(201).json({
-        message: 'Cita agendada con éxito',
-        appointmentId: result.lastID,
+        message: 'Cita agendada con éxito. Recibirás una confirmación por email.',
+        appointmentId: result.lastID, // MySQL devuelve el ID insertado como 'insertId'
       });
 
     } catch (error) {
       console.error('Error al agendar la cita:', error);
-      res.status(500).json({ message: 'Error interno del servidor al agendar la cita.' });
+      res.status(500).json({ message: 'Error interno del servidor al procesar tu solicitud.' });
     }
+
   } else if (req.method === 'GET') {
-    // Opcional: Endpoint para obtener franjas horarias disponibles o citas existentes
     try {
       const { date } = req.query;
-      let appointments;
-      if (date) {
-        // Obtener citas para una fecha específica
-        appointments = await db.all(
-          'SELECT appointmentTime FROM appointments WHERE appointmentDate = ? AND status != ?',
-          date,
-          'cancelled'
-        );
-      } else {
-        // Obtener todas las citas (posiblemente con paginación/filtros para producción)
-        appointments = await db.all('SELECT * FROM appointments');
+
+      // Se requiere una fecha para obtener la disponibilidad
+      if (!date) {
+        return res.status(400).json({ message: 'Se requiere una fecha para consultar la disponibilidad de citas.' });
       }
-      res.status(200).json(appointments);
+
+      // Obtener las horas de las citas programadas para la fecha específica
+      const appointments = await db.all(
+        'SELECT appointmentTime FROM appointments WHERE appointmentDate = ? AND status != ?',
+        [date, 'cancelled'] // ¡Parámetros en un array!
+      );
+      
+      const bookedTimes = appointments.map(appt => appt.appointmentTime);
+      
+      res.status(200).json(bookedTimes);
+
     } catch (error) {
       console.error('Error al obtener citas:', error);
-      res.status(500).json({ message: 'Error interno del servidor al obtener citas.' });
+      res.status(500).json({ message: 'Error interno del servidor al obtener la disponibilidad.' });
     }
+
   } else {
+    // Si el método HTTP no es POST ni GET, devuelve un 405 Method Not Allowed
     res.setHeader('Allow', ['POST', 'GET']);
     res.status(405).end(`Method ${req.method} Not Allowed`);
   }

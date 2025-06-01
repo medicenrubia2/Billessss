@@ -1,19 +1,19 @@
 // components/AppointmentForm.jsx (o .tsx)
 import { useState, useEffect } from 'react';
-import DatePicker from 'react-datepicker'; // Importa DatePicker
-import 'react-datepicker/dist/react-datepicker.css'; // Asegúrate de que los estilos estén importados aquí o en _app.tsx
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
-// Helper para formatear fechas a AAAA-MM-DD (útil para la API)
+// Helper para formatear fechas a AAAA-MM-DD
 const formatDateToISO = (date) => {
   if (!date) return '';
   const d = new Date(date);
   const year = d.getFullYear();
-  const month = (d.getMonth() + 1).toString().padStart(2, '0'); // Los meses son de 0-11
+  const month = (d.getMonth() + 1).toString().padStart(2, '0');
   const day = d.getDate().toString().padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
 
-// Helper para formatear la hora (HH:mm) para la API y la visualización
+// Helper para formatear la hora (HH:mm)
 const formatTime = (date) => {
   if (!date) return '';
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -24,53 +24,55 @@ const AppointmentForm = () => {
     name: '',
     email: '',
     phone: '',
-    // appointmentDateTime será un objeto Date que contendrá fecha y hora
     appointmentDateTime: null,
     message: '',
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [messageType, setMessageType] = useState('');
-  // Estado para almacenar las horas ya reservadas para el día seleccionado
   const [bookedSlotsForSelectedDate, setBookedSlotsForSelectedDate] = useState([]);
 
-  // Efecto para cargar las franjas horarias reservadas cuando la fecha seleccionada cambia
   useEffect(() => {
     const fetchBookedSlots = async () => {
-      if (formData.appointmentDateTime) {
-        const selectedDateISO = formatDateToISO(formData.appointmentDateTime);
-
-        // Si es domingo, no hacemos la llamada API ni generamos franjas
-        if (formData.appointmentDateTime.getDay() === 0) {
-          setBookedSlotsForSelectedDate([]);
-          setMessage('No se realizan consultas los domingos. Por favor, elige otra fecha.');
-          setMessageType('error');
-          return;
-        }
-
-        try {
-          const res = await fetch(`/api/appointments?date=${selectedDateISO}`);
-          const data = await res.json();
-          if (res.ok) {
-            setBookedSlotsForSelectedDate(data.map(slot => slot.appointmentTime));
-            setMessage(null); // Limpiar mensajes de error previos
-          } else {
-            console.error('Error al obtener franjas reservadas:', data.message);
-            setMessage(data.message || 'Error al cargar la disponibilidad de horas.');
-            setMessageType('error');
-          }
-        } catch (error) {
-          console.error('Fallo de red al obtener franjas reservadas:', error);
-          setMessage('Fallo de conexión al cargar la disponibilidad.');
-          setMessageType('error');
-        }
-      } else {
+      if (!formData.appointmentDateTime) {
         setBookedSlotsForSelectedDate([]);
-        setMessage(null); // Limpiar mensajes
+        setMessage(null);
+        setMessageType('');
+        return;
+      }
+
+      const selectedDate = formData.appointmentDateTime;
+      const dayOfWeek = selectedDate.getDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+
+      if (dayOfWeek === 0) { // Si es domingo, no hay franjas disponibles y no se hace llamada a la API
+        setBookedSlotsForSelectedDate([]);
+        setMessage('No se realizan consultas los domingos. Por favor, elige otra fecha.');
+        setMessageType('error');
+        return;
+      }
+
+      const selectedDateISO = formatDateToISO(selectedDate);
+      
+      try {
+        const res = await fetch(`/api/appointments?date=${selectedDateISO}`);
+        const data = await res.json();
+        
+        if (res.ok) {
+          setBookedSlotsForSelectedDate(data);
+          setMessage(null); 
+        } else {
+          console.error('Error al obtener franjas reservadas:', data.message);
+          setMessage(data.message || 'Error al cargar la disponibilidad de horas.');
+          setMessageType('error');
+        }
+      } catch (error) {
+        console.error('Fallo de red al obtener franjas reservadas:', error);
+        setMessage('Fallo de conexión al cargar la disponibilidad.');
+        setMessageType('error');
       }
     };
     fetchBookedSlots();
-  }, [formData.appointmentDateTime]); // Dependencia: se ejecuta cuando 'appointmentDateTime' cambia
+  }, [formData.appointmentDateTime]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -80,7 +82,6 @@ const AppointmentForm = () => {
     }));
   };
 
-  // Maneja el cambio del DatePicker (fecha y hora)
   const handleDateTimeChange = (dateTime) => {
     setFormData((prevData) => ({
       ...prevData,
@@ -94,42 +95,45 @@ const AppointmentForm = () => {
     return day !== 0; // 0 = Domingo
   };
 
-  // Filtra las horas disponibles
-  const filterPassedTime = (time) => {
-    const currentDate = new Date();
-    const selectedDate = formData.appointmentDateTime;
+  // Función para generar la lista de todas las horas que DEBEN ser excluidas
+  const getExcludedTimes = () => {
+    const excluded = [];
+    const now = new Date();
+    const currentSelectedDate = formData.appointmentDateTime;
 
-    // Solo filtrar si la fecha seleccionada es HOY
-    if (selectedDate && formatDateToISO(selectedDate) === formatDateToISO(currentDate)) {
-      return currentDate.getTime() < time.getTime();
+    // Generar TODAS las horas posibles y luego excluir las que NO queremos
+    for (let h = 0; h < 24; h++) {
+        for (let m = 0; m < 60; m += 30) { // Asume intervalos de 30 minutos
+            const timeCandidate = new Date();
+            timeCandidate.setHours(h, m, 0, 0);
+
+            // 1. Excluir horas fuera del rango 9:00 AM - 7:00 PM (19:00)
+            if (h < 9 || h > 19 || (h === 19 && m > 0)) { // 19:00 es 7 PM, 19:30 ya está fuera
+                excluded.push(timeCandidate);
+                continue; // No necesitamos más cheques para esta hora si ya está fuera de rango
+            }
+
+            // 2. Excluir horas pasadas si la fecha seleccionada es hoy
+            if (currentSelectedDate && formatDateToISO(currentSelectedDate) === formatDateToISO(now)) {
+                if (timeCandidate.getTime() < now.getTime()) {
+                    excluded.push(timeCandidate);
+                    continue;
+                }
+            }
+
+            // 3. Excluir horas ya reservadas por la API
+            const formattedTimeCandidate = formatTime(timeCandidate);
+            if (bookedSlotsForSelectedDate.includes(formattedTimeCandidate)) {
+                excluded.push(timeCandidate);
+                continue;
+            }
+        }
     }
-    return true; // No filtrar si no es hoy
-  };
-
-  // Define las horas disponibles según el día de la semana
-  // Esta función no es directamente usada por DatePicker.
-  // La lógica de minTime/maxTime/excludeTimes dentro del DatePicker maneja esto.
-  const getAvailableHours = (date) => {
-    if (!date) return [];
-
-    const dayOfWeek = date.getDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
-    let minHour, maxHour;
-
-    if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Lunes a Viernes
-      minHour = 9;  // 9:00 AM
-      maxHour = 19; // 7:00 PM (19:00h)
-    } else if (dayOfWeek === 6) { // Sábado
-      minHour = 9;  // 9:00 AM
-      maxHour = 16; // 4:00 PM (16:00h)
-    } else { // Domingo
-      return []; // No hay horas disponibles
-    }
-
-    const hours = [];
-    for (let h = minHour; h <= maxHour; h++) {
-      hours.push(h);
-    }
-    return hours;
+    
+    // Eliminar duplicados para evitar problemas
+    const uniqueExcludedTimes = Array.from(new Set(excluded.map(d => d.getTime())))
+                                    .map(timeInMillis => new Date(timeInMillis));
+    return uniqueExcludedTimes;
   };
 
   const handleSubmit = async (e) => {
@@ -145,13 +149,11 @@ const AppointmentForm = () => {
         return;
     }
 
-    // Prepara los datos para la API
     const dataToSend = {
       ...formData,
-      appointmentDate: formatDateToISO(formData.appointmentDateTime), // 'YYYY-MM-DD'
-      appointmentTime: formatTime(formData.appointmentDateTime),      // 'HH:mm'
+      appointmentDate: formatDateToISO(formData.appointmentDateTime),
+      appointmentTime: formatTime(formData.appointmentDateTime),
     };
-    // Eliminar la propiedad original para no enviarla doble
     delete dataToSend.appointmentDateTime;
 
     try {
@@ -168,22 +170,13 @@ const AppointmentForm = () => {
       if (res.ok) {
         setMessage('Cita agendada con éxito. Recibirás una confirmación por email.');
         setMessageType('success');
-        // Resetear el formulario
         setFormData({
           name: '',
           email: '',
           phone: '',
-          appointmentDateTime: null, // Resetear el objeto Date
+          appointmentDateTime: null,
           message: '',
         });
-        // Actualizar la lista de horas reservadas para reflejar la nueva cita
-        // Es mejor forzar un re-fetch de las citas para la fecha actual
-        // Aquí simulamos añadirla, pero un re-fetch sería más robusto
-        if (formData.appointmentDateTime) { // Solo si había una fecha seleccionada
-            const newBookedTime = formatTime(formData.appointmentDateTime);
-            setBookedSlotsForSelectedDate(prev => [...prev, newBookedTime]);
-        }
-
       } else {
         setMessage(data.message || 'Error al agendar la cita. Por favor, inténtalo de nuevo.');
         setMessageType('error');
@@ -196,6 +189,14 @@ const AppointmentForm = () => {
       setLoading(false);
     }
   };
+
+  // `minTime` y `maxTime` aquí se usan para ayudar a `DatePicker` a renderizar un rango más acotado.
+  // Sin embargo, `excludeTimes` será el que finalmente filtre lo que se ve.
+  const minTimeForPicker = new Date();
+  minTimeForPicker.setHours(9, 0, 0, 0); 
+
+  const maxTimeForPicker = new Date();
+  maxTimeForPicker.setHours(19, 0, 0, 0); // 7:00 PM (19:00)
 
   return (
     <div className="max-w-xl mx-auto p-6 bg-white rounded-lg shadow-xl">
@@ -265,54 +266,14 @@ const AppointmentForm = () => {
             timeIntervals={30} // Intervalos de 30 minutos
             minDate={new Date()} // No permite fechas pasadas
             filterDate={isSelectableDate} // Deshabilita domingos
-            filterTime={filterPassedTime} // Deshabilita horas pasadas si es hoy
-            minTime={
-              (() => {
-                const now = new Date();
-                const min = new Date(); // Crea una nueva instancia de Date para minTime
-                const selectedDayOfWeek = formData.appointmentDateTime ? formData.appointmentDateTime.getDay() : null;
-
-                if (selectedDayOfWeek === 6) { // Sábado
-                    min.setHours(9, 0, 0, 0); // Desde las 9:00 AM
-                } else { // Lunes a Viernes (y por defecto si no hay fecha seleccionada)
-                    min.setHours(9, 0, 0, 0); // Desde las 9:00 AM
-                }
-
-                // Si la fecha seleccionada es HOY, asegura que la hora mínima no sea anterior a la hora actual.
-                // Esto es vital para evitar el error "minTime.getHours is not a function"
-                // y para que no se puedan seleccionar horas ya pasadas en el día actual.
-                if (formData.appointmentDateTime && formatDateToISO(formData.appointmentDateTime) === formatDateToISO(now)) {
-                    // Si la hora base (9AM) es menor que la hora actual, O
-                    // si es la misma hora (9AM) pero los minutos base son menores que los actuales,
-                    // ajusta min a la hora actual.
-                    if (min.getHours() < now.getHours() || (min.getHours() === now.getHours() && min.getMinutes() < now.getMinutes())) {
-                        min.setHours(now.getHours(), now.getMinutes(), 0, 0);
-                    }
-                }
-                return min;
-              })()
-            }
-            maxTime={
-              (() => {
-                const max = new Date(); // Crea una nueva instancia de Date para maxTime
-                const selectedDayOfWeek = formData.appointmentDateTime ? formData.appointmentDateTime.getDay() : null;
-
-                if (selectedDayOfWeek === 6) { // Sábado
-                    max.setHours(16, 0, 0, 0); // Hasta las 4:00 PM (16:00h)
-                } else { // Lunes a Viernes (y por defecto si no hay fecha seleccionada)
-                    max.setHours(19, 0, 0, 0); // Hasta las 7:00 PM (19:00h)
-                }
-                return max;
-              })()
-            }
-            excludeTimes={
-                bookedSlotsForSelectedDate.map(slot => {
-                    const [h, m] = slot.split(':').map(Number);
-                    const d = new Date();
-                    d.setHours(h, m, 0, 0);
-                    return d;
-                })
-            }
+            
+            // Aunque `excludeTimes` hará la mayor parte del trabajo, mantener estos límites ayuda
+            // al DatePicker a saber qué rango inicial considerar.
+            minTime={minTimeForPicker} 
+            maxTime={maxTimeForPicker} 
+            
+            // `excludeTimes` ahora es el filtro principal para que no se muestren las opciones no deseadas.
+            excludeTimes={getExcludedTimes()} 
             placeholderText="Selecciona fecha y hora"
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
