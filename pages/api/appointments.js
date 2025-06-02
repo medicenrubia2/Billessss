@@ -4,10 +4,9 @@ import { getDb } from '../../lib/db';
 export default async function handler(req, res) {
   let db;
   try {
-    db = await getDb(); // Intenta obtener la conexión a la DB
+    db = await getDb();
   } catch (dbError) {
-    console.error('Error al conectar a la base de datos:', dbError);
-    // Si hay un error de conexión, respondemos con 500
+    console.error('Error al conectar a la base de datos SQLite:', dbError);
     return res.status(500).json({ message: 'Error interno del servidor: Fallo en la conexión a la base de datos.' });
   }
 
@@ -20,18 +19,9 @@ export default async function handler(req, res) {
     }
 
     try {
-      // 1. Verificar disponibilidad de la franja horaria
-      // MySQL usa '?' para los parámetros, y estos se pasan como un array.
-      const existingAppointment = await db.get(
-        'SELECT id FROM appointments WHERE appointmentDate = ? AND appointmentTime = ? AND status != ?',
-        [appointmentDate, appointmentTime, 'cancelled'] // ¡Parámetros en un array!
-      );
-
-      if (existingAppointment) {
-        return res.status(409).json({ message: 'Esa franja horaria ya está reservada. Por favor, elige otra.' });
-      }
-
-      // 2. Insertar la nueva cita en la base de datos MySQL
+      // Como ya no hay calendario, la lógica de verificación de disponibilidad
+      // se simplifica. Solo insertamos la cita.
+      // Si la disponibilidad se maneja externamente, este endpoint solo registra.
       const result = await db.run(
         'INSERT INTO appointments (name, email, phone, appointmentDate, appointmentTime, message, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         [
@@ -41,14 +31,14 @@ export default async function handler(req, res) {
           appointmentDate,
           appointmentTime,
           message,
-          'scheduled', // Establece el estado inicial de la cita
-          new Date().toISOString().slice(0, 19).replace('T', ' ') // Formato DATETIME para MySQL 'YYYY-MM-DD HH:MM:SS'
-        ] // ¡Parámetros en un array!
+          'scheduled',
+          new Date().toISOString().slice(0, 19).replace('T', ' ')
+        ]
       );
 
       res.status(201).json({
         message: 'Cita agendada con éxito. Recibirás una confirmación por email.',
-        appointmentId: result.lastID, // MySQL devuelve el ID insertado como 'insertId'
+        appointmentId: result.lastID,
       });
 
     } catch (error) {
@@ -58,30 +48,31 @@ export default async function handler(req, res) {
 
   } else if (req.method === 'GET') {
     try {
+      // Si ya no se usa un calendario para seleccionar franjas, este GET podría
+      // usarse para listar todas las citas o para propósitos administrativos.
+      // Por ahora, lo dejaremos como estaba, consultando por fecha si se le pasa.
       const { date } = req.query;
 
-      // Se requiere una fecha para obtener la disponibilidad
-      if (!date) {
-        return res.status(400).json({ message: 'Se requiere una fecha para consultar la disponibilidad de citas.' });
+      let appointments;
+      if (date) {
+        // Obtener citas programadas para una fecha específica
+        appointments = await db.all(
+          'SELECT * FROM appointments WHERE appointmentDate = ? AND status != ?',
+          [date, 'cancelled']
+        );
+      } else {
+        // Obtener todas las citas (cuidado con esto en producción sin paginación)
+        appointments = await db.all('SELECT * FROM appointments WHERE status != ?', ['cancelled']);
       }
-
-      // Obtener las horas de las citas programadas para la fecha específica
-      const appointments = await db.all(
-        'SELECT appointmentTime FROM appointments WHERE appointmentDate = ? AND status != ?',
-        [date, 'cancelled'] // ¡Parámetros en un array!
-      );
       
-      const bookedTimes = appointments.map(appt => appt.appointmentTime);
-      
-      res.status(200).json(bookedTimes);
+      res.status(200).json(appointments);
 
     } catch (error) {
       console.error('Error al obtener citas:', error);
-      res.status(500).json({ message: 'Error interno del servidor al obtener la disponibilidad.' });
+      res.status(500).json({ message: 'Error interno del servidor al obtener las citas.' });
     }
 
   } else {
-    // Si el método HTTP no es POST ni GET, devuelve un 405 Method Not Allowed
     res.setHeader('Allow', ['POST', 'GET']);
     res.status(405).end(`Method ${req.method} Not Allowed`);
   }
