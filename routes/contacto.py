@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from database.connection import SessionLocal
-from ..database.models import Contacto
+from database.models import Contacto
+from database.connection import SessionLocal  # ⬅️ Este import es esencial
 
 router = APIRouter()
 
