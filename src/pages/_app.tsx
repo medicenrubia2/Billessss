@@ -1,6 +1,6 @@
 // C:\Users\martin\Desktop\aplicaciones\rhai\my-rhai-landing\pages\_app.tsx
 
-import '../styles/globals.css'; // Tus estilos globales, si los tienes
+import '@/styles/globals.css';
 import type { AppProps } from 'next/app';
 import Head from 'next/head';
 import Script from 'next/script'; // Importa el componente Script de Next.js

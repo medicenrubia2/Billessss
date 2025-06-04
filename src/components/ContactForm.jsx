@@ -1,7 +1,7 @@
-// components/ContactForm.jsx
 import { useState } from 'react';
+import { supabase } from '@/lib/supabase'; // 👈 Importación correcta con alias
 
-const ContactForm = () => { // <--- Asegúrate que el nombre del componente sea ContactForm
+const ContactForm = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -10,7 +10,7 @@ const ContactForm = () => { // <--- Asegúrate que el nombre del componente sea 
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
-  const [messageType, setMessageType] = useState(''); // 'success' o 'error'
+  const [messageType, setMessageType] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -23,10 +23,9 @@ const ContactForm = () => { // <--- Asegúrate que el nombre del componente sea 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setMessage(null); // Limpiar mensajes anteriores
+    setMessage(null);
     setMessageType('');
 
-    // Validación básica
     if (!formData.name || !formData.email) {
       setMessage('Por favor, completa los campos obligatorios: Nombre y Email.');
       setMessageType('error');
@@ -34,35 +33,24 @@ const ContactForm = () => { // <--- Asegúrate que el nombre del componente sea 
       return;
     }
 
+    const transformedData = {
+      nombre: formData.name,
+      email: formData.email,
+      telefono: formData.phone,
+      mensaje: formData.message,
+    };
+
     try {
-      const res = await fetch('/api/submit-contact', { // Nuevo endpoint de API
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+      const { error } = await supabase.from('contacto').insert([transformedData]);
+      if (error) throw error;
 
-      const data = await res.json();
-
-      if (res.ok) {
-        setMessage(data.message || 'Datos enviados con éxito. ¡Gracias!');
-        setMessageType('success');
-        // Opcional: Resetear el formulario después de un envío exitoso
-        setFormData({
-          name: '',
-          email: '',
-          phone: '',
-          message: '',
-        });
-      } else {
-        setMessage(data.message || 'Error al enviar los datos. Por favor, inténtalo de nuevo.');
-        setMessageType('error');
-      }
-    } catch (error) {
-        console.error('Fallo de red al enviar el formulario:', error);
-        setMessage('Fallo de conexión al enviar el formulario.');
-        setMessageType('error');
+      setMessage('✅ ¡Datos enviados correctamente!');
+      setMessageType('success');
+      setFormData({ name: '', email: '', phone: '', message: '' });
+    } catch (err) {
+      console.error('❌ Error en Supabase:', err.message);
+      setMessage('Error al guardar en la base de datos.');
+      setMessageType('error');
     } finally {
       setLoading(false);
     }
@@ -151,4 +139,4 @@ const ContactForm = () => { // <--- Asegúrate que el nombre del componente sea 
   );
 };
 
-export default ContactForm; // <--- Asegúrate que esta línea exporte ContactForm
+export default ContactForm;
