@@ -34,5 +34,14 @@
     "mensaje": "Mensaje de prueba",
     "fecha_creacion": "2025-07-16T03:15:04.930Z",
     "subido_en": "2025-07-16T03:15:04.930Z"
+  },
+  {
+    "id": 5,
+    "nombre": "Juan Pérez",
+    "email": "juan.perez@test.com",
+    "telefono": "+1-809-555-0123",
+    "mensaje": "Este es un mensaje de prueba para verificar el funcionamiento del sistema de contacto.",
+    "fecha_creacion": "2025-07-16T04:35:29.102Z",
+    "subido_en": "2025-07-16T04:35:29.102Z"
   }
 ]
