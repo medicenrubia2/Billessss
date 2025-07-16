@@ -40,9 +40,17 @@ const localSupabase = {
                     records.push(newRecord);
                     fs.writeFileSync(file, JSON.stringify(records, null, 2));
                     
-                    return { data: [newRecord], error: null };
+                    return { 
+                        data: [newRecord], 
+                        error: null,
+                        select: () => ({ data: [newRecord], error: null })
+                    };
                 } catch (error) {
-                    return { data: null, error: { message: error.message } };
+                    return { 
+                        data: null, 
+                        error: { message: error.message },
+                        select: () => ({ data: null, error: { message: error.message } })
+                    };
                 }
             },
             
