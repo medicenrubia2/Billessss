@@ -12,7 +12,7 @@ from typing import Dict, Any, Optional
 import time
 
 class ImpuestosRDBackendTester:
-    def __init__(self, base_url: str = "http://localhost:4000"):
+    def __init__(self, base_url: str = "https://1c7f9ee5-6c1e-4d07-81c5-0b8e4ae3bfb1.e1-us-east-azure.emergentmethods.ai"):
         self.base_url = base_url
         self.session = requests.Session()
         self.test_results = []
