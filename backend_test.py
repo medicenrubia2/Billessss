@@ -517,7 +517,7 @@ startxref
 def main():
     """Main test execution"""
     # Use the backend URL from frontend .env
-    backend_url = "http://localhost:4000"
+    backend_url = "https://1c7f9ee5-6c1e-4d07-81c5-0b8e4ae3bfb1.e1-us-east-azure.emergentmethods.ai"
     
     print(f"Testing backend at: {backend_url}")
     
