@@ -7,5 +7,14 @@
     "mensaje": "Consulta sobre impuestos",
     "fecha_creacion": "2025-07-16T03:12:49.200Z",
     "subido_en": "2025-07-16T03:12:49.204Z"
+  },
+  {
+    "id": 2,
+    "nombre": "Juan Pérez",
+    "email": "juan@ejemplo.com",
+    "telefono": "809-123-4567",
+    "mensaje": "Consulta sobre impuestos",
+    "fecha_creacion": "2025-07-16T03:13:38.185Z",
+    "subido_en": "2025-07-16T03:13:38.188Z"
   }
 ]
