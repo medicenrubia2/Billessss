@@ -5,6 +5,7 @@ import path from "path";
 import facturasRoutes from "./routes/facturas";
 import calculadoraRoutes from "./routes/calculadora";
 import contactoRoutes from "./routes/contacto";
+import dgiiRoutes from "./routes/dgii";
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/api/facturas", facturasRoutes);
 app.use("/api/calculadora", calculadoraRoutes);
 app.use("/api/contacto", contactoRoutes);
+app.use("/api/dgii", dgiiRoutes);
 
 // Ruta test principal
 app.get("/", (_req, res) => {
