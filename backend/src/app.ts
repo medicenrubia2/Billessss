@@ -25,6 +25,7 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 // Rutas
 app.use("/api/facturas", facturasRoutes);
 app.use("/api/calculadora", calculadoraRoutes);
+app.use("/api/contacto", contactoRoutes);
 
 // Ruta test principal
 app.get("/", (_req, res) => {
