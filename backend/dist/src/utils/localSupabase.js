@@ -24,34 +24,32 @@ if (!fs.existsSync(facturasFile)) {
 const localSupabase = {
     from: (table) => {
         return {
-            insert: async (data) => {
-                try {
-                    let file = table === 'contactos' ? contactosFile : facturasFile;
-                    let records = JSON.parse(fs.readFileSync(file, 'utf8'));
-                    
-                    // Agregar ID y timestamp
-                    const newRecord = {
-                        id: records.length + 1,
-                        ...data[0],
-                        fecha_creacion: data[0].fecha_creacion || new Date().toISOString(),
-                        subido_en: data[0].subido_en || new Date().toISOString()
-                    };
-                    
-                    records.push(newRecord);
-                    fs.writeFileSync(file, JSON.stringify(records, null, 2));
-                    
-                    return { 
-                        data: [newRecord], 
-                        error: null,
-                        select: () => ({ data: [newRecord], error: null })
-                    };
-                } catch (error) {
-                    return { 
-                        data: null, 
-                        error: { message: error.message },
-                        select: () => ({ data: null, error: { message: error.message } })
-                    };
-                }
+            insert: (data) => {
+                const insertPromise = (async () => {
+                    try {
+                        let file = table === 'contactos' ? contactosFile : facturasFile;
+                        let records = JSON.parse(fs.readFileSync(file, 'utf8'));
+                        
+                        // Agregar ID y timestamp
+                        const newRecord = {
+                            id: records.length + 1,
+                            ...data[0],
+                            fecha_creacion: data[0].fecha_creacion || new Date().toISOString(),
+                            subido_en: data[0].subido_en || new Date().toISOString()
+                        };
+                        
+                        records.push(newRecord);
+                        fs.writeFileSync(file, JSON.stringify(records, null, 2));
+                        
+                        return { data: [newRecord], error: null };
+                    } catch (error) {
+                        return { data: null, error: { message: error.message } };
+                    }
+                })();
+                
+                return {
+                    select: () => insertPromise
+                };
             },
             
             select: (columns = '*') => {
