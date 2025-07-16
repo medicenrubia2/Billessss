@@ -9,6 +9,7 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
 const facturas_1 = __importDefault(require("./routes/facturas"));
 const calculadora_1 = __importDefault(require("./routes/calculadora"));
+const contacto_1 = __importDefault(require("./routes/contacto"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 // Middleware de CORS
@@ -23,6 +24,7 @@ app.use("/uploads", express_1.default.static(path_1.default.join(__dirname, "../
 // Rutas
 app.use("/api/facturas", facturas_1.default);
 app.use("/api/calculadora", calculadora_1.default);
+app.use("/api/contacto", contacto_1.default);
 // Ruta test principal
 app.get("/", (_req, res) => {
     res.json({ message: "API ImpuestosRD backend ready 🚀" });
