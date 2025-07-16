@@ -68,88 +68,23 @@ const localSupabase = {
                         };
                     },
                     order: (column, options = {}) => {
-                        return {
-                            then: async (callback) => {
-                                try {
-                                    let file = table === 'contactos' ? contactosFile : facturasFile;
-                                    let records = JSON.parse(fs.readFileSync(file, 'utf8'));
-                                    
-                                    // Ordenar registros
-                                    if (options.ascending === false) {
-                                        records.sort((a, b) => new Date(b[column]) - new Date(a[column]));
-                                    } else {
-                                        records.sort((a, b) => new Date(a[column]) - new Date(b[column]));
-                                    }
-                                    
-                                    return callback({ data: records, error: null });
-                                } catch (error) {
-                                    return callback({ data: null, error: { message: error.message } });
+                        return new Promise((resolve) => {
+                            try {
+                                let file = table === 'contactos' ? contactosFile : facturasFile;
+                                let records = JSON.parse(fs.readFileSync(file, 'utf8'));
+                                
+                                // Ordenar registros
+                                if (options.ascending === false) {
+                                    records.sort((a, b) => new Date(b[column]) - new Date(a[column]));
+                                } else {
+                                    records.sort((a, b) => new Date(a[column]) - new Date(b[column]));
                                 }
+                                
+                                resolve({ data: records, error: null });
+                            } catch (error) {
+                                resolve({ data: null, error: { message: error.message } });
                             }
-                        };
-                    }
-                };
-            },
-            
-            eq: (column, value) => {
-                return {
-                    single: async () => {
-                        try {
-                            let file = table === 'contactos' ? contactosFile : facturasFile;
-                            let records = JSON.parse(fs.readFileSync(file, 'utf8'));
-                            let record = records.find(r => r[column] == value);
-                            
-                            if (record) {
-                                return { data: record, error: null };
-                            } else {
-                                return { data: null, error: { message: 'Record not found' } };
-                            }
-                        } catch (error) {
-                            return { data: null, error: { message: error.message } };
-                        }
-                    }
-                };
-            },
-            
-            order: (column, options = {}) => {
-                return {
-                    then: async (callback) => {
-                        try {
-                            let file = table === 'contactos' ? contactosFile : facturasFile;
-                            let records = JSON.parse(fs.readFileSync(file, 'utf8'));
-                            
-                            // Ordenar registros
-                            if (options.ascending === false) {
-                                records.sort((a, b) => new Date(b[column]) - new Date(a[column]));
-                            } else {
-                                records.sort((a, b) => new Date(a[column]) - new Date(b[column]));
-                            }
-                            
-                            return callback({ data: records, error: null });
-                        } catch (error) {
-                            return callback({ data: null, error: { message: error.message } });
-                        }
-                    },
-                    select: (columns = '*') => {
-                        return {
-                            then: async (callback) => {
-                                try {
-                                    let file = table === 'contactos' ? contactosFile : facturasFile;
-                                    let records = JSON.parse(fs.readFileSync(file, 'utf8'));
-                                    
-                                    // Ordenar registros
-                                    if (options.ascending === false) {
-                                        records.sort((a, b) => new Date(b[column]) - new Date(a[column]));
-                                    } else {
-                                        records.sort((a, b) => new Date(a[column]) - new Date(b[column]));
-                                    }
-                                    
-                                    return callback({ data: records, error: null });
-                                } catch (error) {
-                                    return callback({ data: null, error: { message: error.message } });
-                                }
-                            }
-                        };
+                        });
                     }
                 };
             }
