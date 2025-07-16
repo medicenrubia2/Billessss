@@ -95,6 +95,27 @@ const localSupabase = {
                         } catch (error) {
                             return callback({ data: null, error: { message: error.message } });
                         }
+                    },
+                    select: (columns = '*') => {
+                        return {
+                            then: async (callback) => {
+                                try {
+                                    let file = table === 'contactos' ? contactosFile : facturasFile;
+                                    let records = JSON.parse(fs.readFileSync(file, 'utf8'));
+                                    
+                                    // Ordenar registros
+                                    if (options.ascending === false) {
+                                        records.sort((a, b) => new Date(b[column]) - new Date(a[column]));
+                                    } else {
+                                        records.sort((a, b) => new Date(a[column]) - new Date(b[column]));
+                                    }
+                                    
+                                    return callback({ data: records, error: null });
+                                } catch (error) {
+                                    return callback({ data: null, error: { message: error.message } });
+                                }
+                            }
+                        };
                     }
                 };
             }
