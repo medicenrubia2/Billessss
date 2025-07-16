@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import path from "path";
 import facturasRoutes from "./routes/facturas";
 import calculadoraRoutes from "./routes/calculadora";
+import contactoRoutes from "./routes/contacto";
 
 dotenv.config();
 
