@@ -18,4 +18,52 @@ if (!supabaseUrl || !supabaseAnonKey) {
     console.error('SUPABASE_ANON_KEY:', supabaseAnonKey ? 'HIDDEN' : 'NOT SET');
     throw new Error('Missing Supabase environment variables');
 }
-exports.supabase = (0, supabase_js_1.createClient)(supabaseUrl, supabaseAnonKey);
+// Crear cliente principal
+const supabaseClient = (0, supabase_js_1.createClient)(supabaseUrl, supabaseAnonKey);
+// Función para probar conexión
+async function testSupabaseConnection() {
+    try {
+        const { data, error } = await supabaseClient.from('contactos').select('count').limit(1);
+        if (error) {
+            console.warn('⚠️  Supabase tables not found, using local fallback');
+            return false;
+        }
+        return true;
+    }
+    catch (error) {
+        console.warn('⚠️  Supabase connection failed, using local fallback');
+        return false;
+    }
+}
+// Wrapper que usa fallback local si es necesario
+let useLocalFallback = false;
+// Verificar conexión al inicializar
+testSupabaseConnection().then(connected => {
+    if (!connected) {
+        useLocalFallback = true;
+        console.log('📁 Using local JSON storage for development');
+    }
+    else {
+        console.log('☁️  Using Supabase cloud storage');
+    }
+});
+// Wrapper del cliente
+exports.supabase = {
+    from: (table) => {
+        if (useLocalFallback) {
+            // Usar simulador local
+            const localSupabase = require('./localSupabase');
+            return localSupabase.from(table);
+        }
+        return supabaseClient.from(table);
+    },
+    storage: {
+        from: (bucket) => {
+            if (useLocalFallback) {
+                const localSupabase = require('./localSupabase');
+                return localSupabase.storage.from(bucket);
+            }
+            return supabaseClient.storage.from(bucket);
+        }
+    }
+};
