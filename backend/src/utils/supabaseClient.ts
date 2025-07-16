@@ -36,11 +36,11 @@ async function testSupabaseConnection() {
 }
 
 // Wrapper que usa fallback local si es necesario
-let useLocalFallback = false;
+let useLocalFallback = true; // Forzar uso local
 
 // Verificar conexión al inicializar
 testSupabaseConnection().then(connected => {
-  if (!connected) {
+  if (!connected || useLocalFallback) {
     useLocalFallback = true;
     console.log('📁 Using local JSON storage for development');
   } else {
